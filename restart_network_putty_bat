@@ -1,0 +1,35 @@
+@echo off
+Echo Welcome to the VMware network NIC restart script				
+Echo Created by: Alex Marques
+Echo *****************************************************
+
+Echo Creating commands file
+(
+Echo echo '#!/bin/sh
+Echo esxcli network nic down -n vmnic1
+Echo esxcli network nic up -n vmnic1
+Echo esxcli network nic down -n vmnic0
+Echo esxcli network nic up -n vmnic0 ' ^>^> restart_network 
+
+Echo chmod +x /restart_network
+Echo ./restart_network
+Echo rm /restart_network
+
+)>> "%tmp%/commands.txt" 
+Echo *****************************************************
+pause
+
+set /p id="Enter IP Address: "
+set /p pw="Enter Password: "
+Echo *****************************************************
+Echo running restart script
+"C:\Program Files\PuTTy\putty.exe" -ssh %id% -l root -pw %pw% -m %tmp%/commands.txt
+Echo *****************************************************
+pause
+Echo *****************************************************
+Echo Cleaning up
+del %tmp%\commands.txt 
+Echo *****************************************************
+Echo All done.
+Echo *****************************************************
+pause
