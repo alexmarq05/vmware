@@ -1,0 +1,66 @@
+#start by creating a trust between app and esxi
+#cat .ssh/id_rsa.pub | ssh root@IPADDRESS "cat >> /etc/ssh/keys-root/authorized_keys"
+#cat .ssh/id_rsa.pub | ssh root@IPADDRESS "cat >> /etc/ssh/keys-root/authorized_keys"
+#vi /vmnic_restart_mail
+#copy below script
+#chmod +x /vmnic_restart_mail
+#copy the below into crontab -e
+#VMware NIC Restart Script
+#0 20 * * SUN  /vmnic_restart_mail.sh
+#***********************************************************************************************
+
+#!/bin/bash
+#Global variables
+thishost=$(hostname)
+D=`date +%Y%m%d.%T`
+LOG_DIR="/custom"
+FILENAME="vmnic_restart_mail.log.$D"
+MYLOG="$LOG_DIR/$FILENAME"
+HOST_NAME=`uname -n`
+MAILSRV=SMTP Server address
+MAILERR='email address'
+MAILGOOD='email address'
+#MAILFROMADDR="$thishost@domain"
+ESUBJECT="VMware Host Network Restart : $(date +%Y/%m/%d)"
+SERVER1=IPADDRESS
+SERVER2=IPADDRESS
+
+for host in $SERVER1 $SERVER2
+        do
+        ssh -T root@$host << "ENDSSH"
+        echo '#!/bin/sh
+        esxcli network nic down -n vmnic1
+        esxcli network nic down -n vmnic0
+        esxcli network nic up -n vmnic1
+        esxcli network nic up -n vmnic0
+		sleep 10s
+        tail -n100 /var/log/vmkernel.log | grep -E "Link is Up|Setting link down" >/restart_network.log ' > restart_network.sh
+        chmod +x /restart_network.sh
+        ./restart_network.sh
+ENDSSH
+done
+
+#MAIL RESULTS
+
+echo "----------------------------------------------------------------------" >>$MYLOG
+
+echo "VMware Host Network Restart Report - `date`" >>$MYLOG
+echo "" >>$MYLOG
+echo "VMware Host 1 ($SERVER1)" >>$MYLOG
+ssh root@$SERVER1 "cat /restart_network.log" >>$MYLOG
+echo "" >>$MYLOG
+echo "VMware Host 2 ($SERVER2)" >>$MYLOG
+ssh root@$SERVER2 "cat /restart_network.log" >>$MYLOG
+echo "----------------------------------------------------------------------" >>$MYLOG
+
+
+/usr/local/bin/nscmail -t $MAILGOOD -s $ESUBJECT -b $MYLOG -m $MAILSRV 2>>$MYLOG
+echo "" >>$MYLOG
+
+echo "Sending Email - `date`" >>$MYLOG
+echo "" >>$MYLOG
+
+
+echo "Email Sent - `date`" >>$MYLOG
+echo "" >>$MYLOG
+echo "----------------------------------------------------------------------" >>$MYLOG
